@@ -1,6 +1,6 @@
 structure AST_TREE :
 sig
-val compile : string -> string AST_TYPES.Prop
+val compile : string -> string AST_TYPES.Prop list
 val print_exp : string AST_TYPES.Prop -> unit
 end = 
 struct
@@ -20,13 +20,13 @@ fun compile (fileName) =
               print (fileName ^"["^Int.toString line ^":"
                       ^Int.toString col^"] "^msg^"\n");
       val (tree,rem) = ASTParser.parse
-                      (0,
+                      (15,
                       (ASTParser.makeLexer grab fileName),
                       printError,
                       fileName)
           handle ASTParser.ParseError => raise ASTError;
       val _ = TextIO.closeIn inStream;
-      val _ = print_exp(tree);
+      val _ = (List.map print_exp tree);
   in tree
   end
 end;
