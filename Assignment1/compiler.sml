@@ -20,7 +20,7 @@ fun compile (fileName) =
               print (fileName ^"["^Int.toString line ^":"
                       ^Int.toString col^"] "^msg^"\n");
       val (tree,rem) = ASTParser.parse
-                      (15,
+                      (5,
                       (ASTParser.makeLexer grab fileName),
                       printError,
                       fileName)

@@ -35,7 +35,7 @@ eol = ("\013\010"|"\010"|"\013");
 
 <INITIAL>{ws}* => (lin := 1;eolpos:=0; YYBEGIN AST; continue  ());
 <AST>{ws}* => (continue ());
-<AST>{eol} => (lin := (!lin) + 1; eolpos:=yypos+size yytext; T.P_EOL(!lin,!col));
+<AST>{ws}*{eol}+ => (lin := (!lin) + 1; eolpos:=yypos+size yytext; T.P_EOL(!lin,!col));
 
 <AST>"%" => (YYBEGIN COMMENT; T.P_EOL(!lin,!col));
 <AST>"NOT" => (col:=yypos-(!eolpos); T.P_NOT(!lin,!col));

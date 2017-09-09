@@ -20,7 +20,7 @@ open AST_TYPES
 %nonterm propListR of string Prop list
         | propR of string Prop 
         | iffR of string Prop
-        | iftR of string Prop
+        | iteR of string Prop
         | orR of string Prop
         | andR of string Prop
         | negR of string Prop
@@ -42,16 +42,17 @@ open AST_TYPES
 
 %%
 
-propListR: propR P_EOL propListR              (propR::propListR)
-    | propR                                 ([propR])
+propListR: propR P_EOL propListR            (propR::propListR)
+    | propR P_EOF                           ([propR])
+    |                                       ([])
 
-propR: P_IF propR P_THEN propR P_ELSE propR (print("matching: ITE\n"); ITE(propR1,propR2,propR3))
+propR: P_IF propR P_THEN propR              (print("matching: IMP\n"); IMP(propR1,propR2))
     | iffR                                  (iffR)
 
-iffR: iftR P_IFF iffR                       (print("matching: IFF\n"); IFF(iftR,iffR))
-    | iftR                                  (iftR)
+iffR: iteR P_IFF iffR                       (print("matching: IFF\n"); IFF(iteR,iffR))
+    | iteR                                  (iteR)
 
-iftR: P_IF orR P_THEN iftR                  (print("matching: IMP\n"); IMP(orR,iftR))
+iteR: P_IF propR P_THEN iffR P_ELSE propR   (print("matching: ITE\n"); ITE(propR1,iffR,propR2))
     | orR                                   (orR)
 
 orR: orR P_OR andR                          (print("matching: OR\n"); OR(orR,andR))
