@@ -34,12 +34,6 @@ open AST_TYPES
 %verbose
 %arg (fileName) :string
 
-%nonassoc P_EOF P_LPAR P_RPAR
-%right P_IFF
-%right P_IF P_THEN P_ELSE
-%left P_OR
-%left P_AND
-
 %%
 
 propListR: propR P_EOL propListR            (propR::propListR)
