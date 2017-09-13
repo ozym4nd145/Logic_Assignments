@@ -37,8 +37,7 @@ open AST_TYPES
 %%
 
 propListR: propR P_EOL propListR            (propR::propListR)
-    | propR P_EOF                           ([propR])
-    |                                       ([])
+    | propR                                 ([propR])
 
 propR: P_IF propR P_THEN propR              (print("matching: IMP\n"); IMP(propR1,propR2))
     | iffR                                  (iffR)
