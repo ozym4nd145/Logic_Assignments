@@ -20,3 +20,5 @@
 ( ( a , ( ( b , ( ( c , d , e )ITE ) )IMP ) )IMP )
 ( IMP ( a , ( ITE ( b , ( ITE ( c , d , e ) ) , f ) ) ) )
 ( ( a , ( ( b , ( ( c , d , e )ITE ) , f )ITE ) )IMP )
+( IFF ( a , ( IMP ( a , b ) ) ) )
+( ( a , ( ( a , b )IMP ) )IFF )

@@ -1,0 +1,122 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+   language=Java,
+   aboveskip=3mm,
+   belowskip=3mm,
+   showstringspaces=false,
+   columns=flexible,
+   basicstyle={\small\ttfamily},
+   numbers=none,
+   numberstyle=\tiny\color{gray},
+   keywordstyle=\color{blue},
+   commentstyle=\color{gray},
+   stringstyle=\color{mauve},
+   breaklines=true,
+   breakatwhitespace=true,
+   tabsize=4
+}
+\geometry{
+  top=20mm,
+}
+
+\title{COL703 - Assignment1\\Scanning And Parsing}
+\author{Suyash Agrawal\\2015CS10262}
+
+\begin{document}
+\maketitle
+
+\section{Lexer}
+Lexer parsed the input into the following tokens:
+\begin{itemize}
+  \item NOT
+  \item OR
+  \item AND
+  \item IF
+  \item THEN
+  \item IFF
+  \item ELSE
+  \item TRUE
+  \item FALSE
+  \item LPAR (denotes `(')
+  \item RPAR (denotes `)')
+  \item ATOM (denotes string)
+  \item EOL (denotes end of line)
+\end{itemize}
+
+\section{Parser}
+In order to correctly parse the grammar without using high level directives like "\%left"
+, I introduced additional non-terminals in my grammar. The Terminals were:\\
+\begin{lstlisting}
+P_NOT, P_AND, P_OR, P_IF, P_THEN, P_IFF, P_ELSE, P_TRUE
+P_FALSE, P_RPAR, P_LPAR, P_ATOM, P_ILLCH, P_EOF, P_EOL
+\end{lstlisting}
+The Non-Terminals were:\\
+\begin{lstlisting}
+propListR,propR,iffR,iteR,orR,andR,negR,basicR,wordR
+\end{lstlisting}
+My grammar is as follows:
+\begin{lstlisting}
+propListR: propR P_EOL propListR            (propR::propListR)
+    | propR                                 ([propR])
+
+propR: P_IF propR P_THEN propR              (IMP(propR1,propR2))
+    | iffR                                  (iffR)
+
+iffR: iteR P_IFF propR                      (IFF(iteR,propR))
+    | iteR                                  (iteR)
+
+iteR: P_IF propR P_THEN iffR P_ELSE propR   (ITE(propR1,iffR,propR2))
+    | orR                                   (orR)
+
+orR: orR P_OR andR                          (OR(orR,andR))
+    | andR                                  (andR)
+
+andR: andR P_AND negR                       (AND(andR,negR))
+    | negR                                  (negR)
+
+negR: P_NOT negR                            (NOT(negR))
+    | basicR                                (basicR)
+
+basicR: P_TRUE                              (TOP)
+    | P_FALSE                               (BOTTOM)
+    | P_LPAR propR P_RPAR                   (propR)
+    | wordR                                 (ATOM(wordR))
+
+wordR: P_ATOM wordR                         ((P_ATOM)^" "^(wordR))
+    | P_ATOM                                (P_ATOM)
+\end{lstlisting}
+The basic intuition was to first club the tokens around the high priority operators like AND OR etc.
+and then use these non-terminal in the grammar of other tokens.
+Also, ordering of these non-terminal were used to generate right and left associativity of the operators.\\
+\\
+These were the essence of my grammar:
+\begin{itemize}
+  \item Ground terms and parenthesized expressions are given highest preference.
+  \item Priority of NOT , AND , OR are implemented using hierarchical structure of grammar
+  \item No unparenthesised "IF THEN" expression is allowed to occur between "THEN" and "ELSE" of
+  "IF THEN ELSE" operator.
+  \item IFF is made right associative by constraining the leftmost IFF to contain expression of higher
+  precedence of IFF.
+\end{itemize}
+
+\section{Running}
+\begin{lstlisting}{bash}
+  sml wrapper.sml <input_file> <output_file>
+\end{lstlisting}
+
+NOTE:
+\begin{itemize}
+\item The input file should not contain `.' at end of statements.
+\item The output file should exist. i.e. Program will not automatically create the file.
+\end{itemize}
+
+
+\end{document}
