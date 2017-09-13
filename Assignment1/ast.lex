@@ -39,7 +39,7 @@ eol = ("\013\010"|"\010"|"\013");
 
 <AST>"%" => (YYBEGIN COMMENT; T.P_EOL(!lin,!col));
 <AST>"NOT" => (col:=yypos-(!eolpos); T.P_NOT(!lin,!col));
-<AST>"AND" => (col:=yypos-(!eolpos); print("op: "^yytext^"\n"); T.P_AND(!lin,!col));
+<AST>"AND" => (col:=yypos-(!eolpos); T.P_AND(!lin,!col));
 <AST>"OR" => (col:=yypos-(!eolpos); T.P_OR(!lin,!col));
 <AST>"IF" => (col:=yypos-(!eolpos); T.P_IF(!lin,!col));
 <AST>"THEN" => (col:=yypos-(!eolpos); T.P_THEN(!lin,!col));
@@ -49,7 +49,7 @@ eol = ("\013\010"|"\010"|"\013");
 <AST>"FALSE" => (col:=yypos-(!eolpos); T.P_FALSE(!lin,!col));
 <AST>"(" => (col:=yypos-(!eolpos); T.P_LPAR(!lin,!col));
 <AST>")" => (col:=yypos-(!eolpos); T.P_RPAR(!lin,!col));
-<AST>{char}+ => (col:=yypos-(!eolpos); print("word: "^yytext^"\n"); T.P_ATOM(yytext,!lin,!col));
+<AST>{char}+ => (col:=yypos-(!eolpos); T.P_ATOM(yytext,!lin,!col));
 <AST>.   => (col:=yypos-(!eolpos);
             badCh(fileName,yytext,!lin,!col);
             T.P_ILLCH(!lin,!col));

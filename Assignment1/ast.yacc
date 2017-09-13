@@ -39,28 +39,28 @@ open AST_TYPES
 propListR: propR P_EOL propListR            (propR::propListR)
     | propR                                 ([propR])
 
-propR: P_IF propR P_THEN propR              (print("matching: IMP\n"); IMP(propR1,propR2))
+propR: P_IF propR P_THEN propR              ((*print("matching: IMP\n");*) IMP(propR1,propR2))
     | iffR                                  (iffR)
 
-iffR: iteR P_IFF iffR                       (print("matching: IFF\n"); IFF(iteR,iffR))
+iffR: iteR P_IFF propR                      ((*print("matching: IFF\n");*) IFF(iteR,propR))
     | iteR                                  (iteR)
 
-iteR: P_IF propR P_THEN iffR P_ELSE propR   (print("matching: ITE\n"); ITE(propR1,iffR,propR2))
+iteR: P_IF propR P_THEN iffR P_ELSE propR   ((*print("matching: ITE\n");*) ITE(propR1,iffR,propR2))
     | orR                                   (orR)
 
-orR: orR P_OR andR                          (print("matching: OR\n"); OR(orR,andR))
+orR: orR P_OR andR                          ((*print("matching: OR\n");*) OR(orR,andR))
     | andR                                  (andR)
 
-andR: andR P_AND negR                       (print("matching: AND\n"); AND(andR,negR))
+andR: andR P_AND negR                       ((*print("matching: AND\n");*) AND(andR,negR))
     | negR                                  (negR)
 
-negR: P_NOT negR                            (print("matching: NOT\n"); NOT(negR))
+negR: P_NOT negR                            ((*print("matching: NOT\n");*) NOT(negR))
     | basicR                                (basicR)
 
-basicR: P_TRUE                              (print("matching: TOP\n"); TOP)
-    | P_FALSE                               (print("matching: BOTTOM\n"); BOTTOM)
-    | P_LPAR propR P_RPAR                   (print("matching: propR\n"); propR)
-    | wordR                                 (print("matching: ATOM\n"); ATOM(wordR))
+basicR: P_TRUE                              ((*print("matching: TOP\n");*) TOP)
+    | P_FALSE                               ((*print("matching: BOTTOM\n");*) BOTTOM)
+    | P_LPAR propR P_RPAR                   ((*print("matching: propR\n");*) propR)
+    | wordR                                 ((*print("matching: ATOM\n");*) ATOM(wordR))
 
-wordR: P_ATOM wordR                         (print("matching: wordR: "^P_ATOM^"\n"); (P_ATOM)^" "^(wordR))
-    | P_ATOM                                (print("matching: single: "^P_ATOM^"\n"); P_ATOM)
+wordR: P_ATOM wordR                         ((*print("matching: wordR: "^P_ATOM^"\n");*) (P_ATOM)^" "^(wordR))
+    | P_ATOM                                ((*print("matching: single: "^P_ATOM^"\n");*) P_ATOM)

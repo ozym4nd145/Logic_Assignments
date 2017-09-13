@@ -9,3 +9,4 @@ IF 589 THEN IF 241 THEN Cheshire Cat ELSE Mad Hatter IFF March Hare OR Caterpill
 IF a THEN IF b THEN c ELSE d
 IF a THEN IF b THEN IF c THEN d ELSE e
 IF a THEN IF b THEN IF c THEN d ELSE e ELSE f
+a IFF IF a THEN b
