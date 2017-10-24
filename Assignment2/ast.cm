@@ -1,0 +1,11 @@
+Library
+    structure AST_TREE
+is
+    datatypes.sml
+    ast.lex
+    ast.yacc:MLYacc
+    glue.sml
+    compiler.sml
+    $/basis.cm
+    $/ml-yacc-lib.cm
+    $smlnj/compiler/compiler.cm
