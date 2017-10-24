@@ -40,7 +40,7 @@ structure AST_TYPES:> AST_SIG = struct
 
   exception Error of string
 
-  val makeCnf: string Prop -> Cnf
+  val makeCnf: string Prop list -> Cnf
   val resolve: Cnf -> bool
 
   fun baseProp (x: 'a Prop) = 
@@ -85,7 +85,7 @@ structure AST_TYPES:> AST_SIG = struct
     | BOTTOM => BOTTOM
     | ATOM(a) => ATOM(a)
     | NOT(ATOM(a)) => NOT(ATOM(a))
-    | AND(a,b) => OR(a,b)
+    | AND(a,b) => AND(pushOr a,pushOr b)
     | OR(AND(a,b),c) => AND(pushOr(OR(a,c)),pushOr(OR(b,c)))
     | OR(c,AND(a,b)) => pushOr (OR(AND(a,b),c))
     | OR(a,b) => OR(pushOr a,pushOr b)
@@ -116,15 +116,101 @@ structure AST_TYPES:> AST_SIG = struct
       of AND(a,b) => conv(a)@conv(b)
       | a => (case (flattenOr a)
                 of NONE => []
-                | SOME CLS([]) => raise False
+                | SOME (CLS []) => raise False
                 | SOME a => [a]
              )
     )
-  in CNF(conv x) handle False => CNF([])
+  in CNF(conv x) handle False => CNF([(CLS [])])
   end
 
   fun cnf (x: string Prop) = flattenAnd (pushOr x)
-  fun cnfList (x: string Prop list) = foldl (fn (y, CNF l) => let val CNF(t) = cnf(y) in CNF(l@t) end) (CNF []) x
+  fun makeCnf x = foldl (fn (y, CNF l) => let val CNF(t) = cnf(y) in CNF(l@t) end) (CNF []) x
+
+
+  fun existEmpty (CNF(x): Cnf): bool = let fun search (x: Clause list) = (case x
+                                         of [] => false
+                                         | (CLS [])::tl => true
+                                         | _::tl => search tl 
+                                       ) in search x end
+
+  fun positives [] = []
+  |   positives ((P a)::tl) = (P a)::(positives tl)
+  |   positives ((N a)::tl) = (positives tl)
+
+  fun negatives [] = []
+  |   negatives ((N a)::tl) = (N a)::(negatives tl)
+  |   negatives ((P a)::tl) = (negatives tl)
+
+  fun removeElem ([]) a = []
+  |   removeElem (b::tl) a = if(a=b) then removeElem tl a else b::(removeElem tl a)
+
+  fun remDupl lst = let
+                      fun remove acc [] = acc
+                      |   remove acc (hd::tl) = remove (hd::acc) (removeElem tl hd)
+                    in
+                      remove [] lst
+                    end
+
+  fun isPresent x [] = false
+  |   isPresent x (y::tl) = (x=y) orelse isPresent x tl
+
+  fun findCommon (A,[]) = NONE
+  |   findCommon ([],A) = NONE
+  |   findCommon (L as (P l)::LL,R as (N r)::RR) = if (isPresent (N l) R) then SOME l
+                                                   else if(isPresent (P r) L) then SOME r
+                                                   else findCommon(LL,RR)
+  |   findCommon (_,_) = raise Error("Arguments are incorrectly given!")
+
+
+  fun simplifyClause (CLS(x): Clause): Clause option = let
+                                        val posLst = remDupl(positives x)
+                                        val negLst = remDupl(negatives x)
+                                        in
+                                          case (findCommon(posLst,negLst))
+                                            of NONE => (SOME (CLS (posLst @ negLst)))
+                                            | SOME atm => NONE
+                                        end
+  fun simplify (CNF(x): Cnf): Cnf = CNF(foldl (fn (elem,acc) => case (simplifyClause elem)
+                                                                  of SOME a => acc@[a]
+                                                                  | NONE => acc)
+                                        [] x)
+  fun selectResolveAtom (CNF(x): Cnf): string option = let
+          val posLst = remDupl(foldl (fn ((CLS(elem)),acc) => (positives elem)@acc) [] x)
+          val negLst = remDupl(foldl (fn ((CLS(elem)),acc) => (negatives elem)@acc) [] x)
+          in
+            (findCommon (posLst,negLst))
+          end
+
+  fun mergeClause (a,[],acc) = acc
+  |   mergeClause (CLS(x),CLS(y)::tl,acc) = mergeClause(CLS(x),tl,CLS(x@y)::acc)
+
+  fun permutClauseLst ([],lst2,acc) = acc
+  |   permutClauseLst (hd::tl,lst2,acc) = permutClauseLst(tl,lst2,mergeClause(hd,lst2,acc))
+
+  fun resolvent (CNF(x): Cnf) (atm: string): Cnf = let
+          val (posClauseLst, tempLst) = foldl (fn (CLS(cl),(posL,resL)) =>
+                                                      if (isPresent (P atm) cl) then (CLS(cl)::posL,resL)
+                                                      else (posL,CLS(cl)::resL)) ([],[]) x
+          val (negClauseLst, restLst) = foldl (fn (CLS(cl),(negL,resL)) =>
+                                                      if (isPresent (N atm) cl) then (CLS(cl)::negL,resL)
+                                                      else (negL,CLS(cl)::resL)) ([],[]) tempLst
+          val newPosLst = map (fn CLS(x) => CLS(removeElem x (P atm))) posClauseLst
+          val newNegLst = map (fn CLS(x) => CLS(removeElem x (N atm))) negClauseLst
+          val merged = permutClauseLst(newPosLst,newNegLst,[])
+          in
+            CNF(merged@restLst)
+          end
+
+  fun resolve (x: Cnf):bool = let 
+                                val simple = simplify x
+                              in
+                                if (existEmpty x) then false
+                                else if (x = (CNF [])) then true
+                                else
+                                  case (selectResolveAtom simple)
+                                    of NONE => true
+                                    |  (SOME atm) => (resolve(resolvent simple atm))
+                              end
 
   fun toPrefix toString x = let fun prefix(x) =
   (case x
