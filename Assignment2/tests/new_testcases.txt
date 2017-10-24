@@ -1,0 +1,12 @@
+permutClauseLst ([CLS([P "a"]),CLS([P "k"])],[CLS([P "a",N "b"]),CLS([P "f",N "d"])],[])
+permutClauseLst ([CLS([])],[CLS([P "a",N "b"]),CLS([P "f",N "d"])],[])
+permutClauseLst ([CLS([])],[CLS([]),CLS([])],[])
+
+Control.Print.printDepth := 100;
+val test_cnf = (CNF([
+                    CLS([P("a"),P("a"),N("b")]),
+                    CLS([P("a"),P("b"),N("c")])
+                    ]))
+val test_prop = IFF(ATOM("RAINS"),OR(ATOM("CLOUDY"),ATOM("LUCKY")))
+
+val cnf = CNF [CLS [N "a",P "b"],CLS [N "b"],CLS [P "a"]]

@@ -40,9 +40,6 @@ structure AST_TYPES:> AST_SIG = struct
 
   exception Error of string
 
-  val makeCnf: string Prop list -> Cnf
-  val resolve: Cnf -> bool
-
   fun baseProp (x: 'a Prop) = 
   (case x
     of IMP(a,b) => OR(NOT(baseProp a),(baseProp b))
@@ -100,8 +97,6 @@ structure AST_TYPES:> AST_SIG = struct
         |  BOTTOM => []
         |  ATOM(a) => [P(a)]
         |  NOT(ATOM(a)) => [N(a)]
-        |  OR(a,TOP) => conv(a)
-        |  OR(TOP,a) => conv(OR(a,TOP))
         |  OR(a,b) => conv(a)@conv(b)
         |  _     => raise Error("Only OR expression not given")
       )

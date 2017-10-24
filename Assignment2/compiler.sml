@@ -4,12 +4,16 @@ val compile : string -> string AST_TYPES.Prop list
 val get_prefix: string AST_TYPES.Prop -> string
 val get_postfix: string AST_TYPES.Prop -> string
 val print_tree: string * (string AST_TYPES.Prop list) -> unit
+val makeCnf: string AST_TYPES.Prop list -> AST_TYPES.Cnf
+val resolve: AST_TYPES.Cnf -> bool
 end = 
 struct
 exception ASTError;
 
 fun get_prefix(x) = ((AST_TYPES.toPrefix (fn (x:string) => x) x)^"\n")
 fun get_postfix(x) = ((AST_TYPES.toPostfix (fn (x:string) => x) x)^"\n")
+fun makeCnf(x) = (AST_TYPES.makeCnf x)
+fun resolve(x) = (AST_TYPES.resolve x)
 
 fun compile (fileName) = 
   let val inStream = TextIO.openIn fileName;
