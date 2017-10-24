@@ -38,13 +38,12 @@ structure AST_TYPES:> AST_SIG = struct
   datatype Clause = CLS of (Lit list)
   datatype Cnf    = CNF of (Clause list)
 
-  exception Empty
-  exception False
+  exception Error of string
 
   val makeCnf: string Prop -> Cnf
   val resolve: Cnf -> bool
 
-  fun baseProp (x: 'a Prop) -> 'a Prop = 
+  fun baseProp (x: 'a Prop) = 
   (case x
     of IMP(a,b) => OR(NOT(baseProp a),(baseProp b))
     | IFF(a,b) => let val left = baseProp a
@@ -64,7 +63,7 @@ structure AST_TYPES:> AST_SIG = struct
     | OR(a,b) => OR(baseProp a,baseProp b)
   )
 
-  fun nnf (x: 'a Prop) -> 'a Prop =
+  fun nnf (x: 'a Prop) =
   (case (baseProp x)
     of TOP => TOP
     | BOTTOM => BOTTOM
@@ -80,7 +79,7 @@ structure AST_TYPES:> AST_SIG = struct
     | _       => raise Error("Input Proposition is not of base form")
   )
 
-  fun pushOr (x: 'a Prop) -> 'a Prop = 
+  fun pushOr (x: 'a Prop) = 
   (case (nnf x)
     of TOP => TOP
     | BOTTOM => BOTTOM
@@ -93,23 +92,39 @@ structure AST_TYPES:> AST_SIG = struct
     | _       => raise Error("Input Proposition is not of nnf form")
   )
 
-  fun flattenAnd (x: string Prop) -> Clause = 
+  fun flattenOr (x: string Prop) = 
     let
+      exception True
       fun conv(x) = (case x
-        of TOP => []
-        |  BOTTOM => raise False
+        of TOP => raise True
+        |  BOTTOM => []
         |  ATOM(a) => [P(a)]
         |  NOT(ATOM(a)) => [N(a)]
-        |  AND(a,TOP) => flattenAnd(a)
-        |  AND(TOP,a) => flattenAnd(AND(a,TOP))
-        |  AND(a,b) => flattenAnd(a)@flattenAnd(b)
+        |  OR(a,TOP) => conv(a)
+        |  OR(TOP,a) => conv(OR(a,TOP))
+        |  OR(a,b) => conv(a)@conv(b)
+        |  _     => raise Error("Only OR expression not given")
       )
-    in (case conv(x)
-          of [] => raise Empty
-          | a => a
-       ) handle False => []
+    in (SOME (CLS(conv x)))
+       handle True => NONE
     end
 
+  fun flattenAnd (x: string Prop) = 
+  let
+    exception False
+    fun conv(x) = (case x
+      of AND(a,b) => conv(a)@conv(b)
+      | a => (case (flattenOr a)
+                of NONE => []
+                | SOME CLS([]) => raise False
+                | SOME a => [a]
+             )
+    )
+  in CNF(conv x) handle False => CNF([])
+  end
+
+  fun cnf (x: string Prop) = flattenAnd (pushOr x)
+  fun cnfList (x: string Prop list) = foldl (fn (y, CNF l) => let val CNF(t) = cnf(y) in CNF(l@t) end) (CNF []) x
 
   fun toPrefix toString x = let fun prefix(x) =
   (case x
