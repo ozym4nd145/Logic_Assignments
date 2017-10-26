@@ -76,17 +76,15 @@ structure AST_TYPES:> AST_SIG = struct
     | _       => raise Error("Input Proposition is not of base form")
   )
 
+  fun distOr (p, AND (q,r)) = AND(distOr(p,q),distOr(p,r))
+  |   distOr (AND(q,r), p) = distOr(p,AND(q,r))
+  |   distOr (p,q) = OR(p,q)
+
   fun pushOr (x: 'a Prop) = 
   (case (nnf x)
-    of TOP => TOP
-    | BOTTOM => BOTTOM
-    | ATOM(a) => ATOM(a)
-    | NOT(ATOM(a)) => NOT(ATOM(a))
-    | AND(a,b) => AND(pushOr a,pushOr b)
-    | OR(AND(a,b),c) => AND(pushOr(OR(a,c)),pushOr(OR(b,c)))
-    | OR(c,AND(a,b)) => pushOr (OR(AND(a,b),c))
-    | OR(a,b) => OR(pushOr a,pushOr b)
-    | _       => raise Error("Input Proposition is not of nnf form")
+    of AND(a,b) => AND(pushOr a,pushOr b)
+    | OR(a,b) => distOr(pushOr a,pushOr b)
+    | p  => p
   )
 
   fun flattenOr (x: string Prop) = 

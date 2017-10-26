@@ -1,0 +1,52 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+   language=Java,
+   aboveskip=3mm,
+   belowskip=3mm,
+   showstringspaces=false,
+   columns=flexible,
+   basicstyle={\small\ttfamily},
+   numbers=none,
+   numberstyle=\tiny\color{gray},
+   keywordstyle=\color{blue},
+   commentstyle=\color{gray},
+   stringstyle=\color{mauve},
+   breaklines=true,
+   breakatwhitespace=true,
+   tabsize=4
+}
+\geometry{
+  top=20mm,
+}
+
+\title{COL703 - Assignment2\\Satisfiability Checker}
+\author{Suyash Agrawal\\2015CS10262}
+
+\begin{document}
+\maketitle
+
+\section{Running}
+\begin{lstlisting}{bash}
+  sml wrapper.sml <input_file> <output_file>
+\end{lstlisting}
+This will run the program on $\langle$input\_file$\rangle$ and print on terminal whether it is
+satisfiable or not. Also, it will output the prefix and postfix representation
+of the parsed input.\\\\
+NOTE:
+\begin{itemize}
+\item The input file should not contain `.' at end of statements.
+\item There should be no newline at the end of file.
+\item The output file should exist. i.e. Program will not automatically create the file.
+\item Some example test files are given in test folder
+\end{itemize}
+
+
+\end{document} 

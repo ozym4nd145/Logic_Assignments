@@ -1,0 +1,2 @@
+q AND NOT a
+a OR b

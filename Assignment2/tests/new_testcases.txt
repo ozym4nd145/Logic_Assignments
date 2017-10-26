@@ -10,3 +10,33 @@ val test_cnf = (CNF([
 val test_prop = IFF(ATOM("RAINS"),OR(ATOM("CLOUDY"),ATOM("LUCKY")))
 
 val cnf = CNF [CLS [N "a",P "b"],CLS [N "b"],CLS [P "a"]]
+
+val tree =
+  [IMP (ATOM "price rise",ATOM "poor salaried unhappy"),
+   IMP (ATOM "tax increase",ATOM "businessmen unhappy"),
+   IMP
+     (OR (ATOM "poor salaried unhappy",ATOM "businessmen unhappy"),
+      NOT (ATOM "govt reelected")),
+   IMP (ATOM "govt expenditure exceed revenue",ATOM "inflation rise"),
+   IMP
+     (OR
+        (OR (ATOM "tax increase",ATOM "govt resort deficit finance"),
+         ATOM "govt take loan"),NOT (ATOM "govt expenditure exceed revenue")),
+   IMP (ATOM "govt resort deficit finance",ATOM "inflation rise"),
+   IMP (ATOM "inflation rise",ATOM "price rise"),
+   AND (ATOM "govt reelected",TOP),NOT (ATOM "govt take loan")]
+
+
+val cnf =
+  CNF
+    [CLS [N "price rise",P "poor salaried unhappy"],
+     CLS [N "tax increase",P "businessmen unhappy"],
+     CLS [N "poor salaried unhappy",N "govt reelected"],
+     CLS [N "businessmen unhappy",N "govt reelected"],
+     CLS [N "govt expenditure exceed revenue",P "inflation rise"],
+     CLS [N "tax increase",N "govt expenditure exceed revenue"],
+     CLS [N "govt resort deficit finance",N "govt expenditure exceed revenue"],
+     CLS [N "govt take loan",N "govt expenditure exceed revenue"],
+     CLS [N "govt resort deficit finance",P "inflation rise"],
+     CLS [N "inflation rise",P "price rise"],CLS [P "govt reelected"],
+     CLS [N "govt take loan"]]

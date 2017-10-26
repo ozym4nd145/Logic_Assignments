@@ -1,0 +1,8 @@
+IF price rise THEN poor salaried unhappy
+IF tax increase THEN businessmen unhappy
+IF poor salaried unhappy OR businessmen unhappy THEN NOT govt reelected
+IF govt expenditure exceed revenue THEN inflation will rise
+IF tax increase OR govt resort deficit finance OR govt take loan THEN NOT govt expenditure exceed revenue 
+IF govt resort deficit finance THEN inflation will rise
+govt reelected AND TRUE
+govt take loan AND TRUE
