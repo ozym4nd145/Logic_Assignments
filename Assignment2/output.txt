@@ -1,0 +1,4 @@
+( AND ( q , ( NOT ( a ) ) ) )
+( ( q , ( ( a )NOT ) )AND )
+( OR ( a , b ) )
+( ( a , b )OR )
