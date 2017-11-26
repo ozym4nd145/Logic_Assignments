@@ -109,10 +109,10 @@ struct
     fun makePCNF (x: Form) =
     (
         let
-            fun skipQuant (x:Form) = case x
-                of FORALL(_,f) => skipQuant f
-                |  EXISTS(_,f) => skipQuant f
-                |  f           => if (isQuantFree f) then f else raise Error("The given form is not Prenex")
+            fun applyQuantFree (fnc: Form->Form) (x:Form) = case x
+                of FORALL(str,f) => FORALL(str,applyQuantFree (fnc) f)
+                |  EXISTS(str,f) => EXISTS(str,applyQuantFree (fnc) f)
+                |  f           => if (isQuantFree f) then (fnc f) else raise Error("The given form is not Prenex")
             fun makennf (x: Form) = case x
                 of TOP1 => TOP1
                 |  BOTTOM1 => BOTTOM1
@@ -153,7 +153,7 @@ struct
                                 end
                 |  _       => raise Error("Input Proposition is not of base form")
         in
-            distOr ( makennf (skipQuant x) )
+            applyQuantFree (fn x => distOr(makennf x)) x
         end
     )
 
