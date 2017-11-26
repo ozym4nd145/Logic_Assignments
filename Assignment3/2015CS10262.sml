@@ -12,9 +12,14 @@ struct
         | EXISTS of string * Form
 
     exception Error of string
+    exception NOT_UNIFIABLE
+
+    type substitution = ((Term*Term) list)
 
     (* Function to check if a Form is quantifier free *)
-    fun isQuantFree (x: Form) = case x
+    fun isQuantFree (x: Form) =
+    (
+        case x
         of FORALL(_,_) => false
         |  EXISTS(_,_) => false
         |  TOP1 => true
@@ -26,6 +31,7 @@ struct
         |  IMP1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
         |  IFF1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
         |  ITE1(a,b,c) => (((isQuantFree a) andalso (isQuantFree b)) andalso (isQuantFree c))
+    )
 
     (* Function to make all variable name different in the formula *)
     fun standardizeVar (x: Form) =
@@ -195,5 +201,43 @@ struct
         end
     )
 
+    fun occurs (VAR(a): Term) (t: Term) = case t
+        of CONST(_) => false
+        |  VAR(b) => (a=b)
+        |  FUNC(str,tl) => occursinlist (VAR a) tl
+    and occursinlist (VAR(a): Term) (tl: Term list) = case tl
+        of [] => false
+        |  t::ts => (occurs (VAR a) t) orelse (occursinlist (VAR a) ts)
+    
+    fun applySubst ((key,value): Term*Term) (t: Term) = case t
+        of CONST(_) => t
+        |  VAR(_) => if t=key then value else t
+        |  FUNC(str,tl) => FUNC(str,applySubstList (key,value) tl)
+    and applySubstList (sub: Term*Term) (list: Term list) = case list
+        of [] => []
+        |  t1::tl => (applySubst sub t1)::(applySubstList sub tl)
+    
+    fun unify (l1: Term list) (l2: Term list) (sub: substitution): substitution = case (l1,l2)
+        of ([],[]) => sub
+        |  (t1::tl1,t2::tl2) => if t1 = t2 then unify tl1 tl2 sub else
+                                (
+                                    case (t1,t2)
+                                        of (CONST a,CONST b) => if a=b then sub else raise NOT_UNIFIABLE
+                                        |  (FUNC(a,al),FUNC(b,bl)) => if a=b then unify (al@tl1) (bl@tl2) sub
+                                                                    else raise NOT_UNIFIABLE
+                                        |  (VAR(a),_) => if (occurs (VAR a) t2) then raise NOT_UNIFIABLE
+                                                        else
+                                                            let
+                                                                val new_subst = (VAR(a),t2)
+                                                                val new_l1 = applySubstList new_subst tl1
+                                                                val new_l2 = applySubstList new_subst tl2
+                                                                val new_sub = new_subst::(List.map (fn (a:Term,b) => (a,applySubst new_subst b)) sub)
+                                                            in
+                                                                unify new_l1 new_l2 new_sub
+                                                            end
+                                        |   (_,VAR(a)) => unify l2 l1 sub
+                                        |   (_,_) => raise NOT_UNIFIABLE
+                                )
+        | _ => raise NOT_UNIFIABLE
     fun resolve (x: Form) = true
 end
