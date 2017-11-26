@@ -157,7 +157,43 @@ struct
         end
     )
 
-    fun makeSCNF (x: Form) = x
+    fun makeSCNF (x: Form) =
+    (
+        let
+            fun findMap (mp: (Term*Term) list) (var: Term) = case mp
+                of [] => var
+                |  (v,mapping)::rest => if (v=var) then mapping else findMap rest var
+            fun applyMapTermList (mp: (Term*Term) list) (tl:Term list) = case tl
+                of [] => []
+                |  (CONST a)::r => (CONST a)::(applyMapTermList mp r)
+                |  (VAR a)::r => (findMap mp (VAR a))::(applyMapTermList mp r)
+                |  (FUNC (str,e))::r => (FUNC(str,applyMapTermList mp e))::(applyMapTermList mp r)
+            fun applyMap (mp: (Term*Term) list) (f: Form) = case f
+                of TOP1 => TOP1
+                |  BOTTOM1 => BOTTOM1
+                |  PRED(str,tl) => PRED(str,applyMapTermList mp tl)
+                |  AND1(a,b) => AND1(applyMap mp a,applyMap mp b)
+                |  OR1(a,b) => OR1(applyMap mp a,applyMap mp b)
+                |  NOT1(a) => NOT1(applyMap mp a)
+                |  _       => raise Error("Input Proposition is not of base form")
+
+            fun makeSkolEntry (str: string) (pre: string) (idx: int) (tl: Term list) = 
+                let
+                    val name = (pre^(Int.toString idx))
+                    val entryFun = (VAR str,FUNC(name,tl))
+                    val entryCons = (VAR str,CONST(name))
+                in
+                    if (tl=[]) then entryCons else entryFun
+                end
+
+            fun skolemize (x: Form) (mp: (Term*Term) list) (pre: string) (idx: int) (tl: Term list) = case x
+                of FORALL(str,f) => FORALL(str,skolemize f mp pre idx ((VAR str)::tl))
+                | EXISTS(str,f) => skolemize f ((makeSkolEntry str pre idx tl)::mp) pre (idx+1) (tl)
+                | f => applyMap mp f
+        in
+            skolemize x [] "__SKOVAR_" 0 []
+        end
+    )
 
     fun resolve (x: Form) = true
 end
