@@ -11,6 +11,22 @@ struct
         | FORALL of string * Form
         | EXISTS of string * Form
 
+    exception Error of string
+
+    (* Function to check if a Form is quantifier free *)
+    fun isQuantFree (x: Form) = case x
+        of FORALL(_,_) => false
+        |  EXISTS(_,_) => false
+        |  TOP1 => true
+        |  BOTTOM1 => true
+        |  PRED(_,_) => true
+        |  NOT1(x) => isQuantFree x
+        |  AND1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
+        |  OR1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
+        |  IMP1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
+        |  IFF1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
+        |  ITE1(a,b,c) => (((isQuantFree a) andalso (isQuantFree b)) andalso (isQuantFree c))
+
     (* Function to make all variable name different in the formula *)
     fun standardizeVar (x: Form) =
     (
@@ -43,19 +59,6 @@ struct
     fun makePrenex (x: Form) = 
     (
         let
-            fun isQuantFree (x: Form) = case x
-                of FORALL(_,_) => false
-                |  EXISTS(_,_) => false
-                |  TOP1 => true
-                |  BOTTOM1 => true
-                |  PRED(_,_) => true
-                |  NOT1(x) => isQuantFree x
-                |  AND1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
-                |  OR1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
-                |  IMP1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
-                |  IFF1(a,b) => ((isQuantFree a) andalso (isQuantFree b))
-                |  ITE1(a,b,c) => (((isQuantFree a) andalso (isQuantFree b)) andalso (isQuantFree c))
-            
             val standardForm = (standardizeVar x)
         in
         case standardForm
@@ -103,7 +106,56 @@ struct
         end
     )
 
-    fun makePCNF (x: Form) = x
+    fun makePCNF (x: Form) =
+    (
+        let
+            fun skipQuant (x:Form) = case x
+                of FORALL(_,f) => skipQuant f
+                |  EXISTS(_,f) => skipQuant f
+                |  f           => if (isQuantFree f) then f else raise Error("The given form is not Prenex")
+            fun makennf (x: Form) = case x
+                of TOP1 => TOP1
+                |  BOTTOM1 => BOTTOM1
+                |  PRED(a,b) => PRED(a,b)
+                |  NOT1(TOP1) => BOTTOM1
+                |  NOT1(BOTTOM1) => TOP1
+                |  NOT1(NOT1(a)) => makennf a
+                |  NOT1(PRED(a,b)) => NOT1(PRED(a,b))
+                |  NOT1(OR1(a,b)) => AND1(makennf (NOT1 a),makennf (NOT1 b))
+                |  NOT1(AND1(a,b)) => OR1(makennf (NOT1 a),makennf (NOT1 b))
+                |  AND1(a,b) => AND1(makennf a,makennf b)
+                |  OR1(a,b) => OR1(makennf a,makennf b)
+                |  _       => raise Error("Input Proposition is not of base form")
+            fun isAndFree (x:Form) = case x
+                of AND1(_,_) => false
+                |  OR1(a,b) => ((isAndFree a)andalso(isAndFree b))
+                |  NOT1(a) => isAndFree a
+                |  PRED(_,_) => true
+                |  TOP1 => true
+                |  BOTTOM1 => true
+                |  _       => raise Error("Input Proposition is not of base form")
+            fun distOr (x:Form) = case x
+                of AND1(a,b) => AND1(distOr a,distOr b)
+                |  NOT1(PRED(a,b)) => NOT1(PRED(a,b))
+                |  TOP1 => TOP1
+                |  BOTTOM1 => BOTTOM1
+                |  PRED(a,b) => PRED(a,b)
+                |  OR1(AND1(a,b),c) => distOr (AND1((OR1(a,c)),(OR1(b,c))))
+                |  OR1(a,AND1(b,c)) => distOr (AND1((OR1(a,c)),(OR1(b,c))))
+                |  OR1(a,b) =>  let
+                                    val r1 = isAndFree a
+                                    val r2 = isAndFree b
+                                in
+                                    if (r1 andalso r2) then OR1(a,b)
+                                    else if ((not r1) andalso (not r2)) then (distOr (OR1(distOr a, distOr b)))
+                                    else if (not r1) then (distOr (OR1 (distOr a,b)))
+                                    else (distOr (OR1 (a,distOr b)))
+                                end
+                |  _       => raise Error("Input Proposition is not of base form")
+        in
+            distOr ( makennf (skipQuant x) )
+        end
+    )
 
     fun makeSCNF (x: Form) = x
 
