@@ -9,11 +9,6 @@ val symm = FORALL("x",FORALL("y",IMP1(PRED("p",[VAR "x",VAR "y"]),PRED("p",[VAR 
 val notsymm = NOT1(symm);
 val prop = (AND1(notsymm,AND1(refl,euc)));
 
-val standardForm = (standardizeVar prop)
-val prenex = makePrenex standardForm
-val pcnf = makePCNF prenex
-val scnf = makeSCNF pcnf
-val set = makeSet scnf
 resolve prop;
 
 val form1 = IMP1(PRED("p",[VAR("x")]),PRED("q",[VAR("x")]));
