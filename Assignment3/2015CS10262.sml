@@ -278,16 +278,16 @@ struct
         |  PRED(a,b)::tl => negPred tl
         |  _ => raise Error("Or clauses are not pure")
     
-    fun exists (a: 'a) (b: 'a list) = case b
+    fun exists a b = case b
         of [] => false
         |  (x::tl) => if x=a then true else exists a tl
 
-    fun existsPred (a:string) (b: Clause) = case b
+    fun existsPred (a:string) (b: clause) = case b
         of [] => false
         |  (PRED(c,d))::tl => if c=a then true else existsPred a tl
         |  _::tl => existsPred a tl
 
-    fun existsNotPred (a:string) (b: Clause) = case b
+    fun existsNotPred (a:string) (b: clause) = case b
         of [] => false
         |  (NOT1(PRED(c,d)))::tl => if c=a then true else existsNotPred a tl
         |  _::tl => existsNotPred a tl
@@ -310,23 +310,6 @@ struct
         of [] => []
         |  cl::cl_list => if isContradCl cl then (simplify cl_list) else cl::(simplify cl_list)
     
-    fun getAllPos (set: clause list) = case set
-        of [] => []
-        |  cl::cl_list => (posPred cl)::(getAllPos cl_list)
-    fun getAllNeg (set: clause list) = case set
-        of [] => []
-        |  cl::cl_list => (negPred cl)::(getAllNeg cl_list)
-
-    fun selectResolvePred (set: clause list) =
-    (
-        let
-            val allpos = getAllPos set
-            val allneg = getAllNeg set
-        in
-            commonPred allpos allneg
-        end
-    )
-
     fun selectPred (pred: string) (set: clause list) (newset: clause list) = case set
         of [] => raise Error("Selected predicate does not exist")
         |  a::tl => if (existsPred pred a) then (a,tl@newset) else selectPred pred tl (a::newset)
@@ -334,7 +317,7 @@ struct
         of [] => raise Error("Selected predicate does not exist")
         |  a::tl => if (existsNotPred pred a) then (a,tl@newset) else selectNotPred pred tl (a::newset)
 
-    fun separateClause (pred: string) (cl:clause) (restCl: clause list) (unift: Term list) = case cl
+    fun separateClause (pred: string) (cl:clause) (restCl: clause) (unift: Term list) = case cl
         of [] => (restCl,unift)
         |  (PRED(a,b))::tl => if a=pred then separateClause pred tl restCl (unift@b)
                               else separateClause pred tl (PRED(a,b)::restCl) unift
@@ -352,7 +335,7 @@ struct
             case terms
                 of [] => []
                 |  [a] => []
-                |  a::tl => let sec = copy a tl in unify sec tl [] end
+                |  a::tl => let val sec = copy a tl in unify sec tl [] end
         end
     )
 
@@ -368,34 +351,34 @@ struct
     fun resolveStep (set: clause list) =
     (
         let
-          fun selectBaseClause (set: clause list) (rest_set: clause list)= case set
-            of [] => raise NO_CLAUSE_TO_UNIFY
-            |  cl::tl => selectBaseProp cl (rest_set@tl) handle NO_CLAUSE_TO_UNIFY => selectBaseClause tl (cl::rest_set)
-          fun selectBaseProp (cl: clause) (rem_set: clause list) = case cl
-            of [] => raise NO_CLAUSE_TO_UNIFY
-            |  (PROP(a,b))::tl => selectNotPropClause a cl rem_set [] handle NO_CLAUSE_TO_UNIFY => selectBaseProp tl rem_set
-            |  (NOT1(PROP(a,b)))::tl => selectPropClause a cl rem_set [] handle NO_CLAUSE_TO_UNIFY => selectBaseProp tl rem_set
-          fun selectNotPropClause (prop: string) (cl: clause) (set: clause list) (rem_set: clause list) = case set
-            of [] => raise NO_CLAUSE_TO_UNIFY
-            |  cl2::tl => if (existsNotPred prop cl2) then
-                           ( tryUnify prop cl cl2 (tl@rem_set) handle NO_CLAUSE_TO_UNIFY => selectNotPropClause prop cl tl (cl2::rem_set))
-                          else selectNotPropClause prop cl tl (cl2::rem_set)
-          fun selectPropClause (prop: string) (cl: clause) (set: clause list) (rem_set: clause list) = case set
-            of [] => raise NO_CLAUSE_TO_UNIFY
-            |  cl2::tl => if (existsPred prop cl2) then
-                           ( tryUnify prop cl cl2 (tl@rem_set) handle NO_CLAUSE_TO_UNIFY => selectPropClause prop cl tl (cl2::rem_set))
-                          else selectNotPropClause prop cl tl (cl2::rem_set)
           fun tryUnify (prop: string) (cl1: clause) (cl2: clause) (set: clause list) = 
           (
             let
                 val mixedClause = cl1@cl2
-                val (restClause,unifyTerms) = separateClause pred mixedClause [] []
-                val subs = unifyTermList unifyTerms [] handle NOT_UNIFIABLE => raise NO_CLAUSE_TO_UNIFY
+                val (restClause,unifyTerms) = separateClause prop mixedClause [] []
+                val subs = unifyTermList unifyTerms handle NOT_UNIFIABLE => raise NO_CLAUSE_TO_UNIFY
                 val new_clause = substClause subs restClause
             in
                 new_clause::set
             end
           )
+          fun selectPropClause (prop: string) (cl: clause) (set: clause list) (rem_set: clause list) = case set
+            of [] => raise NO_CLAUSE_TO_UNIFY
+            |  cl2::tl => if (existsPred prop cl2) then
+                           ( tryUnify prop cl cl2 (tl@rem_set) handle NO_CLAUSE_TO_UNIFY => selectPropClause prop cl tl (cl2::rem_set))
+                          else selectPropClause prop cl tl (cl2::rem_set)
+          fun selectNotPropClause (prop: string) (cl: clause) (set: clause list) (rem_set: clause list) = case set
+            of [] => raise NO_CLAUSE_TO_UNIFY
+            |  cl2::tl => if (existsNotPred prop cl2) then
+                           ( tryUnify prop cl cl2 (tl@rem_set) handle NO_CLAUSE_TO_UNIFY => selectNotPropClause prop cl tl (cl2::rem_set))
+                          else selectNotPropClause prop cl tl (cl2::rem_set)
+          fun selectBaseProp (props: Form list) (cl: clause) (rem_set: clause list) = case props
+            of [] => raise NO_CLAUSE_TO_UNIFY
+            |  (PRED(str,_))::tl => (selectNotPropClause str cl rem_set [] handle NO_CLAUSE_TO_UNIFY => selectBaseProp tl cl rem_set)
+            |  (NOT1(PRED(str,_)))::tl => (selectPropClause str cl rem_set [] handle NO_CLAUSE_TO_UNIFY => selectBaseProp tl cl rem_set)
+          fun selectBaseClause (set: clause list) (rest_set: clause list)= case set
+            of [] => raise NO_CLAUSE_TO_UNIFY
+            |  cl::tl => selectBaseProp cl cl (rest_set@tl) handle NO_CLAUSE_TO_UNIFY => selectBaseClause tl (cl::rest_set)
         in
           selectBaseClause set []
         end
