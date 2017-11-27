@@ -66,10 +66,7 @@ struct
 
     fun makePrenex (x: Form) = 
     (
-        let
-            val standardForm = (standardizeVar x)
-        in
-        case standardForm
+        case x
         of PRED(a,b) => PRED(a,b)
         |  TOP1 => TOP1 
         |  BOTTOM1 => BOTTOM1
@@ -77,20 +74,21 @@ struct
         |  EXISTS(str,form) => EXISTS(str,(makePrenex form))
         |  NOT1(FORALL(x,f)) => EXISTS(x,NOT1(f))
         |  NOT1(EXISTS(x,f)) => FORALL(x,NOT1(f))
-        |  NOT1(x) => if (isQuantFree x) then NOT1(x) else (makePrenex (NOT1( makePrenex x)))
+        |  NOT1(x) => let val normx = makePrenex x in if (isQuantFree normx) then NOT1(normx)
+                                                  else (makePrenex (NOT1( normx))) end
         |  AND1(FORALL(x,f),b) => FORALL(x,makePrenex (AND1(f,b)))
         |  AND1(EXISTS(x,f),b) => EXISTS(x,makePrenex (AND1(f,b)))
         |  AND1(a,FORALL(x,f)) => FORALL(x,makePrenex (AND1(a,f)))
         |  AND1(a,EXISTS(x,f)) => EXISTS(x,makePrenex (AND1(a,f)))
         |  AND1(a,b) => (
                             let
-                                val a1 = (isQuantFree a)
-                                val a2 = (isQuantFree b)
+                                val anorm = makePrenex a
+                                val bnorm = makePrenex b
+                                val a1 = (isQuantFree anorm)
+                                val a2 = (isQuantFree bnorm)
                             in
-                                if (a1 andalso a2) then (AND1(a,b))
-                                else if ((not a1) andalso (not a2)) then (makePrenex (AND1(makePrenex a,makePrenex b)))
-                                else if (not a1) then (makePrenex (AND1(makePrenex a,b)))
-                                else (makePrenex (AND1(a,makePrenex b)))
+                                if (a1 andalso a2) then (AND1(anorm,bnorm))
+                                else (makePrenex (AND1(anorm,bnorm)))
                             end
                        )
         |  OR1(FORALL(x,f),b) => FORALL(x,makePrenex (OR1(f,b)))
@@ -99,19 +97,18 @@ struct
         |  OR1(a,EXISTS(x,f)) => EXISTS(x,makePrenex (OR1(a,f)))
         |  OR1(a,b) => (
                             let
-                                val a1 = (isQuantFree a)
-                                val a2 = (isQuantFree b)
+                                val anorm = makePrenex a
+                                val bnorm = makePrenex b
+                                val a1 = (isQuantFree anorm)
+                                val a2 = (isQuantFree bnorm)
                             in
-                                if (a1 andalso a2) then (OR1(a,b))
-                                else if ((not a1) andalso (not a2)) then (makePrenex (OR1(makePrenex a,makePrenex b)))
-                                else if (not a1) then (makePrenex (OR1(makePrenex a,b)))
-                                else (makePrenex (OR1(a,makePrenex b)))
+                                if (a1 andalso a2) then (OR1(anorm,bnorm))
+                                else (makePrenex (OR1(anorm,bnorm)))
                             end
                        )
         |  IMP1(a,b) => makePrenex (OR1(NOT1(a),b))
         |  IFF1(a,b) => makePrenex (OR1(AND1(a,b),AND1(NOT1 a, NOT1 b)))
         |  ITE1(a,b,c) => makePrenex (OR1(AND1(a,b),AND1(NOT1 a, c)))
-        end
     )
 
     fun makePCNF (x: Form) =
@@ -321,8 +318,14 @@ struct
         of [] => (restCl,unift)
         |  (PRED(a,b))::tl => if a=pred then separateClause pred tl restCl (unift@b)
                               else separateClause pred tl (PRED(a,b)::restCl) unift
-        |  (NOT1(PRED(a,b)))::tl => if a=pred then separateClause pred tl restCl (unift@b)
-                              else separateClause pred tl (NOT1(PRED(a,b))::restCl) unift
+        |  (NOT1(PRED(a,b)))::tl => separateClause pred tl (NOT1(PRED(a,b))::restCl) unift
+        |   _ => raise Error("The terms in clause are not in pure form")
+
+    fun separateNotClause (pred: string) (cl:clause) (restCl: clause) (unift: Term list) = case cl
+        of [] => (restCl,unift)
+        |  (PRED(a,b))::tl => separateNotClause pred tl (PRED(a,b)::restCl) unift
+        |  (NOT1(PRED(a,b)))::tl => if a=pred then separateNotClause pred tl restCl (unift@b)
+                              else separateNotClause pred tl (NOT1(PRED(a,b))::restCl) unift
         |   _ => raise Error("The terms in clause are not in pure form")
     
     fun unifyTermList (terms: Term list)=
@@ -348,20 +351,27 @@ struct
         |  NOT1(PRED(a,b))::tl => NOT1(PRED(a,substTermList subs b))::(substClause subs tl)
         |   _ => raise Error("The terms in clause are not in pure form")
 
+    fun tryUnify (prop: string) (cl1: clause) (cl2: clause) (set: clause list) = 
+    (
+        let
+            val (posres1,posterm1) = separateClause prop cl1 [] []
+            val (posres2,posterm2) = separateClause prop cl2 [] []
+            val (negres1,negterm1) = separateNotClause prop cl1 [] []
+            val (negres2,negterm2) = separateNotClause prop cl2 [] []
+            val takecl1neg = ((posterm1=[]) orelse (negterm2=[]))
+            val (restClause,unifyTerms) = if takecl1neg then ((negres1@posres2),(negterm1@posterm2))
+                                            else ((negres2@posres1),(negterm2@posterm1))
+            val subs = unifyTermList unifyTerms handle NOT_UNIFIABLE => raise NO_CLAUSE_TO_UNIFY
+            val new_clause = substClause subs restClause
+        in
+            new_clause::set
+        end
+    )
+
     fun resolveStep (set: clause list) =
     (
         let
-          fun tryUnify (prop: string) (cl1: clause) (cl2: clause) (set: clause list) = 
-          (
-            let
-                val mixedClause = cl1@cl2
-                val (restClause,unifyTerms) = separateClause prop mixedClause [] []
-                val subs = unifyTermList unifyTerms handle NOT_UNIFIABLE => raise NO_CLAUSE_TO_UNIFY
-                val new_clause = substClause subs restClause
-            in
-                new_clause::set
-            end
-          )
+          
           fun selectPropClause (prop: string) (cl: clause) (set: clause list) (rem_set: clause list) = case set
             of [] => raise NO_CLAUSE_TO_UNIFY
             |  cl2::tl => if (existsPred prop cl2) then
@@ -388,20 +398,17 @@ struct
 
     fun reduce (set: clause list) =
     (
-        let
-            val simple = simplify set
-        in
-            if (exists [] simple) then false
-            else if (simple=[]) then true
-            else
-            reduce(resolveStep(simple)) handle NO_CLAUSE_TO_UNIFY => true
-        end
+        if (exists [] set) then false
+        else if (set=[]) then true
+        else
+        reduce(resolveStep(set)) handle NO_CLAUSE_TO_UNIFY => true
     )
 
     fun resolve (x: Form) =
     (
         let
-            val prenex = makePrenex x
+            val standardForm = (standardizeVar x)
+            val prenex = makePrenex standardForm
             val pcnf = makePCNF prenex
             val scnf = makeSCNF pcnf
             val set = makeSet scnf
