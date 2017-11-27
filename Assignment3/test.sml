@@ -14,3 +14,5 @@ val f1 = FUNC("f1",[(VAR "fv1"),(VAR "fv2"),(CONST "kc1")]);
 
 val p1 = PRED("p1",[v1,v2,c2]);
 val p2 = PRED("p2",[f1,v3,c3]);
+
+val c1 = AND1(AND1(p1,OR1(p1,p1)),OR1(p1,p1));

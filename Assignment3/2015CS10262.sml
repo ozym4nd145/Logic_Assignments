@@ -13,8 +13,10 @@ struct
 
     exception Error of string
     exception NOT_UNIFIABLE
+    exception NO_CLAUSE_TO_UNIFY
 
     type substitution = ((Term*Term) list)
+    type clause = Form list
 
     (* Function to check if a Form is quantifier free *)
     fun isQuantFree (x: Form) =
@@ -217,7 +219,9 @@ struct
         of [] => []
         |  t1::tl => (applySubst sub t1)::(applySubstList sub tl)
     
-    fun unify (l1: Term list) (l2: Term list) (sub: substitution): substitution = case (l1,l2)
+    fun unify (l1: Term list) (l2: Term list) (sub: substitution): substitution =
+    (
+        case (l1,l2)
         of ([],[]) => sub
         |  (t1::tl1,t2::tl2) => if t1 = t2 then unify tl1 tl2 sub else
                                 (
@@ -239,5 +243,187 @@ struct
                                         |   (_,_) => raise NOT_UNIFIABLE
                                 )
         | _ => raise NOT_UNIFIABLE
-    fun resolve (x: Form) = true
+    )
+
+    fun containsTop (x: Form list) = case x
+        of [] => false
+        |  a::tl => if a=TOP1 then true else containsTop tl
+    fun makeSet (x: Form) =
+    (
+        let
+            fun expandOr (x: Form) = case x
+                of OR1(a,b) => (expandOr a) @ (expandOr b)
+                | BOTTOM1 => []
+                | _ => [x]
+            fun expandAnd (x: Form) = case x
+                of AND1(a,b) => (expandAnd a)@(expandAnd b)
+                |  _    => let val cl = expandOr x in if (containsTop cl) then [] else [cl] end
+            fun skipFor (x: Form) = case x
+                of FORALL(_,f) => skipFor f
+                |  _ => expandAnd x
+        in
+            skipFor x
+        end
+    )
+
+    fun posPred (cl: clause) = case cl
+        of [] => []
+        |  PRED(a,b)::tl => PRED(a,b)::(posPred tl)
+        |  NOT1(PRED(a,b))::tl => posPred tl
+        |  _ => raise Error("Or clauses are not pure")
+
+    fun negPred (cl: clause) = case cl
+        of [] => []
+        |  (NOT1(PRED(a,b)))::tl => PRED(a,b)::(negPred tl)
+        |  PRED(a,b)::tl => negPred tl
+        |  _ => raise Error("Or clauses are not pure")
+    
+    fun exists (a: 'a) (b: 'a list) = case b
+        of [] => false
+        |  (x::tl) => if x=a then true else exists a tl
+
+    fun existsPred (a:string) (b: Clause) = case b
+        of [] => false
+        |  (PRED(c,d))::tl => if c=a then true else existsPred a tl
+        |  _::tl => existsPred a tl
+
+    fun existsNotPred (a:string) (b: Clause) = case b
+        of [] => false
+        |  (NOT1(PRED(c,d)))::tl => if c=a then true else existsNotPred a tl
+        |  _::tl => existsNotPred a tl
+    
+    fun commonPred (a: clause) (b: clause) = case a
+        of [] => NONE
+        |  PRED(p,q)::tl => if (existsPred p b) then SOME(p) else commonPred tl b
+        |  _ => raise Error("All clauses are not pred in common Pred")
+
+    fun isContradCl (cl: clause) =
+        let
+            val pos = posPred cl
+            val neg = negPred cl
+        in
+            case (commonPred pos neg)
+                of SOME _ => true
+                |  NONE => false
+        end
+    fun simplify (set: clause list) = case set
+        of [] => []
+        |  cl::cl_list => if isContradCl cl then (simplify cl_list) else cl::(simplify cl_list)
+    
+    fun getAllPos (set: clause list) = case set
+        of [] => []
+        |  cl::cl_list => (posPred cl)::(getAllPos cl_list)
+    fun getAllNeg (set: clause list) = case set
+        of [] => []
+        |  cl::cl_list => (negPred cl)::(getAllNeg cl_list)
+
+    fun selectResolvePred (set: clause list) =
+    (
+        let
+            val allpos = getAllPos set
+            val allneg = getAllNeg set
+        in
+            commonPred allpos allneg
+        end
+    )
+
+    fun selectPred (pred: string) (set: clause list) (newset: clause list) = case set
+        of [] => raise Error("Selected predicate does not exist")
+        |  a::tl => if (existsPred pred a) then (a,tl@newset) else selectPred pred tl (a::newset)
+    fun selectNotPred (pred: string) (set: clause list) (newset: clause list) = case set
+        of [] => raise Error("Selected predicate does not exist")
+        |  a::tl => if (existsNotPred pred a) then (a,tl@newset) else selectNotPred pred tl (a::newset)
+
+    fun separateClause (pred: string) (cl:clause) (restCl: clause list) (unift: Term list) = case cl
+        of [] => (restCl,unift)
+        |  (PRED(a,b))::tl => if a=pred then separateClause pred tl restCl (unift@b)
+                              else separateClause pred tl (PRED(a,b)::restCl) unift
+        |  (NOT1(PRED(a,b)))::tl => if a=pred then separateClause pred tl restCl (unift@b)
+                              else separateClause pred tl (NOT1(PRED(a,b))::restCl) unift
+        |   _ => raise Error("The terms in clause are not in pure form")
+    
+    fun unifyTermList (terms: Term list)=
+    (
+        let
+            fun copy (t: Term) (terms: Term list) = case terms
+                of [] => []
+                |  a::b => t::(copy t b)
+        in
+            case terms
+                of [] => []
+                |  [a] => []
+                |  a::tl => let sec = copy a tl in unify sec tl [] end
+        end
+    )
+
+    fun substTermList (subs:substitution) (b: Term list) = case subs
+        of [] => b
+        |  s::tl => substTermList tl (applySubstList s b)
+    fun substClause (subs: substitution) (cl: clause) = case cl
+        of [] => []
+        |  PRED(a,b)::tl => PRED(a,substTermList subs b)::(substClause subs tl)
+        |  NOT1(PRED(a,b))::tl => NOT1(PRED(a,substTermList subs b))::(substClause subs tl)
+        |   _ => raise Error("The terms in clause are not in pure form")
+
+    fun resolveStep (set: clause list) =
+    (
+        let
+          fun selectBaseClause (set: clause list) (rest_set: clause list)= case set
+            of [] => raise NO_CLAUSE_TO_UNIFY
+            |  cl::tl => selectBaseProp cl (rest_set@tl) handle NO_CLAUSE_TO_UNIFY => selectBaseClause tl (cl::rest_set)
+          fun selectBaseProp (cl: clause) (rem_set: clause list) = case cl
+            of [] => raise NO_CLAUSE_TO_UNIFY
+            |  (PROP(a,b))::tl => selectNotPropClause a cl rem_set [] handle NO_CLAUSE_TO_UNIFY => selectBaseProp tl rem_set
+            |  (NOT1(PROP(a,b)))::tl => selectPropClause a cl rem_set [] handle NO_CLAUSE_TO_UNIFY => selectBaseProp tl rem_set
+          fun selectNotPropClause (prop: string) (cl: clause) (set: clause list) (rem_set: clause list) = case set
+            of [] => raise NO_CLAUSE_TO_UNIFY
+            |  cl2::tl => if (existsNotPred prop cl2) then
+                           ( tryUnify prop cl cl2 (tl@rem_set) handle NO_CLAUSE_TO_UNIFY => selectNotPropClause prop cl tl (cl2::rem_set))
+                          else selectNotPropClause prop cl tl (cl2::rem_set)
+          fun selectPropClause (prop: string) (cl: clause) (set: clause list) (rem_set: clause list) = case set
+            of [] => raise NO_CLAUSE_TO_UNIFY
+            |  cl2::tl => if (existsPred prop cl2) then
+                           ( tryUnify prop cl cl2 (tl@rem_set) handle NO_CLAUSE_TO_UNIFY => selectPropClause prop cl tl (cl2::rem_set))
+                          else selectNotPropClause prop cl tl (cl2::rem_set)
+          fun tryUnify (prop: string) (cl1: clause) (cl2: clause) (set: clause list) = 
+          (
+            let
+                val mixedClause = cl1@cl2
+                val (restClause,unifyTerms) = separateClause pred mixedClause [] []
+                val subs = unifyTermList unifyTerms [] handle NOT_UNIFIABLE => raise NO_CLAUSE_TO_UNIFY
+                val new_clause = substClause subs restClause
+            in
+                new_clause::set
+            end
+          )
+        in
+          selectBaseClause set []
+        end
+
+    )
+
+
+    fun reduce (set: clause list) =
+    (
+        let
+            val simple = simplify set
+        in
+            if (exists [] simple) then false
+            else if (simple=[]) then true
+            else
+            reduce(resolveStep(simple)) handle NO_CLAUSE_TO_UNIFY => true
+        end
+    )
+
+    fun resolve (x: Form) =
+    (
+        let
+            val prenex = makePrenex x
+            val pcnf = makePCNF prenex
+            val scnf = makeSCNF pcnf
+            val set = makeSet scnf
+        in
+            reduce set
+        end
+    )
 end
