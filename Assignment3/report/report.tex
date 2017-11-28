@@ -1,0 +1,76 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+   language=Java,
+   aboveskip=3mm,
+   belowskip=3mm,
+   showstringspaces=false,
+   columns=flexible,
+   basicstyle={\small\ttfamily},
+   numbers=none,
+   numberstyle=\tiny\color{gray},
+   keywordstyle=\color{blue},
+   commentstyle=\color{gray},
+   stringstyle=\color{mauve},
+   breaklines=true,
+   breakatwhitespace=true,
+   tabsize=4
+}
+\geometry{
+  top=20mm,
+}
+
+\title{COL703 - Assignment3\\First Order Resolution}
+\author{Suyash Agrawal\\2015CS10262}
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+The objective of this assigment was to check satisfiability of first order logic statements
+using Resolution Refutation method.
+
+\section*{Procedure}
+The following procedure was used for resolution:
+\begin{itemize}
+    \item First standardize the variables of the formula apart to prevent free variable capture during various steps.
+    \item Then convert the standardized formula to Prenex Normal form.
+    \item Convert the quantifier free part to Conjunctive Normal Form.
+    \item Skolemize the formula to get rid of EXISTS quantifier.
+    \item Convert the formula to set notation, i.e. formula is a set of clauses and each clause is a set of predicate.
+    \item Resolution Step:
+    \begin{itemize}
+        \item Select two clauses from set such that there is a predicate p in one of them and NOT(predicate p) in other
+              and they are unifiable.
+        \item Compute the most general unifier for these two predicate.
+        \item Apply the m.g.u. computed on the rest of the predicates in the selected clauses.
+        \item Remove these two clauses from the original set of clauses and add the union of the predicates in these 
+              clauses after removing the selected predicates and applying the m.g.u.
+    \end{itemize}
+    \item Do resolution step repeatedly till it is possible to find two unifiable perdicates.
+    \item The result is:
+    \begin{itemize}
+        \item If Empty clause is derived then False (as contradiction is shown)
+        \item Else True.
+    \end{itemize}
+\end{itemize}
+
+\section*{NOTE}
+Since the resolution step is itself indeterministic (as it does not specify the procedure for choosing which
+terms to unify), this program can give false positives i.e. it can output true for unsatisfiable formula
+,as for some order of resolution we may not be able to derive contradiction.\\
+Though, the program will never give false negative, i.e. if it outputs false for a formula then that
+formula is definitely false as we are able to derive contradiction from it.
+
+\section*{Running}
+Please see ``test.sml'' attached to see how to use the program. It also contains sample testcases.
+
+
+\end{document}
