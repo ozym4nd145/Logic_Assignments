@@ -34,13 +34,13 @@ ignore/
 # *-blx.bib
 # *.run.xml
 #
-# ## Build tool auxiliary files:
-# *.fdb_latexmk
-# *.synctex
-# *.synctex(busy)
-# *.synctex.gz
-# *.synctex.gz(busy)
-# *.pdfsync
+## Build tool auxiliary files:
+*.fdb_latexmk
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
 #
 # ## Auxiliary and intermediate files from other packages:
 # # algorithms
